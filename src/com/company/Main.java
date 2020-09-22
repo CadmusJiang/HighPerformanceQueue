@@ -1,13 +1,11 @@
 package com.company;
 
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.BrokenBarrierException;
+import java.text.DecimalFormat;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
     public static long getStartTime() {
@@ -19,13 +17,18 @@ public class Main {
     }
     private static long startTime = 0;
     public static void main(String[] args) throws Exception {
-        int writeThreadNums = 3;
-        int readThreadNums = 3;
-        int writeOperationNums = (int)10e5;
-        HighPerfomanceQueue queue = new HighPerfomanceQueue<String>();
-        AtomicInteger cnt = new AtomicInteger();
-        List<Integer> result = new ArrayList<>();
-        CountDownLatch latch = new CountDownLatch(writeThreadNums+readThreadNums);
+        int writeThreadNums = 1;
+        int readThreadNums = 1;
+        long writeOperationNums = (int)1e7;
+        int singleOperationNums = 100; // every write operations, add how much element into queue;
+        long readOperationNums = writeOperationNums*writeThreadNums*singleOperationNums/readThreadNums;
+        HighPerformanceQueue queue = new HighPerformanceQueue<String>(1<<15);
+        AtomicLong cnt = new AtomicLong();// count number of out queue elements
+        CountDownLatch latch = new CountDownLatch(writeThreadNums+readThreadNums);// End the queue when both the write and read processes are finished
+        Integer[] tmp = new Integer[singleOperationNums];
+        for(int i=0;i<singleOperationNums;i++){
+            tmp[i] = new Integer(1);
+        }
         CyclicBarrier cyclicBarrier = new CyclicBarrier(writeThreadNums + readThreadNums, new Runnable() {
             @Override
             public void run() {
@@ -44,8 +47,8 @@ public class Main {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    for(int j=0;j<writeOperationNums;j++){
-                        while(!queue.add(1));
+                    for(long j=0;j<writeOperationNums;j++){
+                        while(!queue.add(tmp));
                     }
                     latch.countDown();
                 }
@@ -63,7 +66,7 @@ public class Main {
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    for(int j=0;j<writeOperationNums*writeThreadNums/readThreadNums;j++) {
+                    for(long j=0;j<readOperationNums;j++) {
                         while(true) {
                             Integer e = (Integer) queue.poll();
                             if (e != null) {
@@ -79,22 +82,8 @@ public class Main {
         }
         latch.await();
         double time = (System.currentTimeMillis()-startTime)/1000.0;
-        System.out.println("总数量"+cnt.get());
-        System.out.println("每秒吞吐量"+cnt.get()*1.0/time);
-//        List<Integer> help = new ArrayList<>(result);
-//        Collections.sort(help);
-//        for(int i=0;i<result.size();i++){
-//            if(help.get(i)!=result.get(i)){
-//                System.out.println(i);
-//                break;
-//            }
-//        }
-        for(int i=0;i<result.size();i++){
-            System.out.print(result.get(i)+" ");
-            if(i%10==0&&i!=0){
-                System.out.println();
-            }
-        }
-
+        System.out.println("总数量:"+cnt.get()+" 总用时:"+time);
+        DecimalFormat decimalFormat = new DecimalFormat("#,##0.00");
+        System.out.println("每秒吞吐量"+decimalFormat.format(cnt.get()*1.0/time));
     }
 }

@@ -8,5 +8,7 @@ public interface Queue<E>{
 
     E poll();
 
-    E element();
+    E peek();
+
+    boolean isEmpty();
 }
